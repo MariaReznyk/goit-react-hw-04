@@ -1,64 +1,73 @@
 import { useState, useEffect } from 'react';
-import { nanoid } from 'nanoid';
-import initialContacts from './data/contacts.json';
+// import { nanoid } from 'nanoid';
 import PageHeader from './components/PageHeader/PageHeader';
 import Section from './components/Section/Section';
 import Container from './components/Container/Container';
-import ContactList from './components/ContactList/ContactList';
-import ContactForm from './components/ContactForm/ContactForm';
-import SearchBox from './components/SearchBox/SearchBox';
+import SearchBar from './components/SearchBar/SearchBar';
+import { fetchPictures } from './unsplash-api';
+import ImageGallery from './components/ImageGallery/ImageGallery';
+import Loader from './components/Loader/Loader';
+import LoadMoreBtn from './components/LoadMoreBtn/LoadMoreBtn';
+import Modal from 'react-modal';
 
 function App() {
-  const [contactList, setContactList] = useState(() => {
-    const savedContacts = localStorage.getItem('contacts');
-    return savedContacts ? JSON.parse(savedContacts) : initialContacts;
-  });
-  const [filter, setFilter] = useState('');
+  Modal.setAppElement('#root');
+
+  const [searchResult, setSearchResult] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const handleSearch = input => {
+    setSearchQuery(input);
+    setCurrentPage(1);
+    setSearchResult([]);
+  };
+
+  const handleLoadMore = () => {
+    setCurrentPage(currentPage + 1);
+  };
 
   useEffect(() => {
-    localStorage.setItem('contacts', JSON.stringify(contactList));
-  }, [contactList]);
+    if (searchQuery.trim() === '') {
+      return;
+    }
 
-  function handleAdd(newContact) {
-    setContactList(prev => [
-      ...prev,
-      {
-        id: nanoid(),
-        name: newContact.contactName,
-        number: newContact.phoneNumber,
-      },
-    ]);
-  }
-
-  function handleDelete(id) {
-    setContactList(prev => prev.filter(prev => prev.id !== id));
-  }
-
-  const filteredContacts = contactList.filter(contact =>
-    contact.name.toLowerCase().includes(filter.toLowerCase()),
-  );
+    async function fetchData() {
+      try {
+        setIsError(false);
+        setIsLoading(true);
+        const newPictures = await fetchPictures(searchQuery, currentPage);
+        setSearchResult(prevPictures => [...prevPictures, ...newPictures]);
+      } catch {
+        setIsError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchData();
+  }, [currentPage, searchQuery]);
 
   return (
-    <Section>
-      <Container>
-        <PageHeader task={'Phonebook'}>Homework #3</PageHeader>
-      </Container>
-
-      <Container>
-        <ContactForm onClickSubmit={handleAdd} />
-      </Container>
-
-      <Container>
-        <SearchBox value={filter} handleSearch={setFilter} />
-      </Container>
-
-      <Container>
-        <ContactList
-          contactList={filteredContacts}
-          onClickDelete={handleDelete}
-        ></ContactList>
-      </Container>
-    </Section>
+    <>
+      <Section>
+        <Container>
+          <PageHeader task={'Picture Search'}>Homework #4</PageHeader>
+          <SearchBar onSubmit={handleSearch} />
+        </Container>
+      </Section>
+      <Section>
+        <Container>
+          {searchResult.length > 0 && !isError && <ImageGallery picturesArray={searchResult} />}
+          {isError && <strong>Something went wrong... Please try again later.</strong>}
+          <Loader isLoading={isLoading} />
+          {searchResult.length > 0 && !isLoading && <LoadMoreBtn onClick={handleLoadMore} />}
+        </Container>
+      </Section>
+    </>
   );
 }
 

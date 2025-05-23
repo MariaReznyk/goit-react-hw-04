@@ -1,7 +1,11 @@
-import style from './Section.module.css';
+import styles from './Section.module.css';
 
-function Section({ children }) {
-  return <section className={style.section}>{children}</section>;
+function Section({ children, style }) {
+  return (
+    <section className={styles.section} style={style}>
+      {children}
+    </section>
+  );
 }
 
 export default Section;
